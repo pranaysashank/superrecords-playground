@@ -65,8 +65,9 @@ variables:
 stages:
   - build
 
-.preinstall: &preinstall
-   script: |
+build:
+  stage: build
+  script: |
           apt-get update
           # required for https/cache save and restore
           apt-get install -y ca-certificates
@@ -88,11 +89,6 @@ stages:
           PACKCHECK_URL=${PACKCHECK_GITHUB_URL}/${PACKCHECK_GITHUB_COMMIT}/packcheck.sh
           if test ! -e "$PACKCHECK"; then $CURL -sL -o "$PACKCHECK" $PACKCHECK_URL; fi;
           chmod +x $PACKCHECK
-
-build:
-  stage: build
-  <<: *preinstall
-  script: |
           apt-get install -y ghc-8.4.3
           apt-get install -y cabal-install-2.2
           bash -c "$PACKCHECK cabal-new"
