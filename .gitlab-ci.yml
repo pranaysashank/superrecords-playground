@@ -3,12 +3,13 @@ image: debian:stretch
 cache:
   key: ${CI_BUILD_REF_NAME}
   paths:
-  - ~/.cabal
-  - ~/.ghc
-  - ~/.local
-  - ~/.stack
+  - .cabal
+  - .ghc
+  - .local
+  - .stack
 
 variables:
+      STACK_ROOT: "${CI_PROJECT_DIR}/.stack"
   # ------------------------------------------------------------------------
       # Common options
       # ------------------------------------------------------------------------
@@ -101,6 +102,6 @@ build:
     - *run
 
 hlint:
-  stage: build
+  stage: hlint
   script: |
-   bash -c "$PACKCHECK stack HLINT_COMMANDS="hlint lint"
+   bash -c "$PACKCHECK stack HLINT_COMMANDS=\"hlint lint\""
