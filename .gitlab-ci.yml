@@ -62,34 +62,45 @@ variables:
       PACKCHECK_GITHUB_URL: "https://raw.githubusercontent.com/harendra-kumar/packcheck"
       PACKCHECK_GITHUB_COMMIT: "e78ad4b50eb17795ea4a58fcd79dffbb0c8979c6"
 
-stages:
-  - build
+.preinstall: &preinstall |
+   apt-get update
+   # required for https/cache save and restore
+   apt-get install -y ca-certificates
+   # For ghc and cabal-install packages from haskell.org
+   # gnupg is required for apt-key to work
+   apt-get install -y gnupg
+   apt-key adv --keyserver keyserver.ubuntu.com  --recv-keys BA3CBA3FFE22B574
+   echo "deb http://downloads.haskell.org/debian stretch main" >> /etc/apt/sources.list
+   apt-get update
+   # required for packcheck
+   apt-get install -y curl
+   # required for outbound https for stack and for stack setup
+   apt-get install -y netbase xz-utils make
+   # If a custom stack-yaml is specified, replace the default with that
+   if test -e "$STACK_YAML"; then rm -f stack.yaml && ln -sv $STACK_YAML stack.yaml; else true; fi
+   unset STACK_YAML
+   # Get packcheck if needed
+   CURL=$(which curl)
+   PACKCHECK_URL=${PACKCHECK_GITHUB_URL}/${PACKCHECK_GITHUB_COMMIT}/packcheck.sh
+   if test ! -e "$PACKCHECK"; then $CURL -sL -o "$PACKCHECK" $PACKCHECK_URL; fi;
+   chmod +x $PACKCHECK  
 
-build:
-  stage: build
-  script: |
-          apt-get update
-          # required for https/cache save and restore
-          apt-get install -y ca-certificates
-          # For ghc and cabal-install packages from haskell.org
-          # gnupg is required for apt-key to work
-          apt-get install -y gnupg
-          apt-key adv --keyserver keyserver.ubuntu.com  --recv-keys BA3CBA3FFE22B574
-          echo "deb http://downloads.haskell.org/debian stretch main" >> /etc/apt/sources.list
-          apt-get update
-          # required for packcheck
-          apt-get install -y curl
-          # required for outbound https for stack and for stack setup
-          apt-get install -y netbase xz-utils make
-          # If a custom stack-yaml is specified, replace the default with that
-          if test -e "$STACK_YAML"; then rm -f stack.yaml && ln -sv $STACK_YAML stack.yaml; else true; fi
-          unset STACK_YAML
-          # Get packcheck if needed
-          CURL=$(which curl)
-          PACKCHECK_URL=${PACKCHECK_GITHUB_URL}/${PACKCHECK_GITHUB_COMMIT}/packcheck.sh
-          if test ! -e "$PACKCHECK"; then $CURL -sL -o "$PACKCHECK" $PACKCHECK_URL; fi;
-          chmod +x $PACKCHECK
+.run: &run |
           apt-get install -y ghc-8.4.3
           apt-get install -y cabal-install-2.2
           bash -c "$PACKCHECK cabal-new"
 
+stages:
+  - build
+  - hlint
+
+build:
+  stage: build
+  script:
+    - *preinstall
+    - *run
+
+hlint:
+  stage: build
+  script: |
+   bash -c "$PACKCHECK stack HLINT_COMMANDS="hlint lint"
